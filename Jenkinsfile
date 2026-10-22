@@ -4,7 +4,7 @@
 // No secrets live in this file: the production .env is injected from the Jenkins
 // credential "scoutops-env-file" (type: Secret file) and deleted when the build ends.
 pipeline {
-  agent { label 'docker' }
+  agent { label 'java-node' }
 
   options {
     timestamps()
