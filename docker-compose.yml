@@ -1,0 +1,62 @@
+# ScoutOps - LOCAL DEVELOPMENT stack.   Run: docker compose up --build
+# Reads DB_* values from .env (cp .env.example .env).
+services:
+  scoutops-app:
+    build:
+      context: .
+    image: scoutops:local
+    container_name: scoutops-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-scoutops}
+      DB_USER: ${DB_USER:-scoutops_user}
+      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD is not set, copy .env.example to .env first}"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - scoutops-net
+      - scoutops-db
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: scoutops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-scoutops}
+      POSTGRES_USER: ${DB_USER:-scoutops_user}
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD is not set, copy .env.example to .env first}"
+    volumes:
+      - scoutops_pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - scoutops-db        # internal only: no ports are published to the host
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  scoutops_pgdata:
+    name: scoutops_pgdata
+
+networks:
+  scoutops-net:           # app <-> monitoring (Prometheus joins this network)
+    name: scoutops-net
+  scoutops-db:            # app <-> postgres, no outside access
+    name: scoutops-db
+    internal: true

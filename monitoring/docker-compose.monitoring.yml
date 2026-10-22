@@ -1,0 +1,58 @@
+# ScoutOps monitoring stack: Prometheus (9090) + Grafana (3001).
+# Start the application stack FIRST - this stack joins its Docker network.
+#
+#   Local stack:       docker compose --env-file .env -f monitoring/docker-compose.monitoring.yml up -d
+#   Production stack:  SCOUTOPS_NETWORK=scoutops-prod-net docker compose --env-file .env \
+#                        -f monitoring/docker-compose.monitoring.yml up -d
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: scoutops-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"     # bound to localhost; use an SSH tunnel on EC2
+    networks:
+      - scoutops-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: scoutops-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is not set - add it to .env and pass --env-file .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+    ports:
+      - "127.0.0.1:3001:3000"     # bound to localhost; use an SSH tunnel on EC2
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      - scoutops-net
+
+volumes:
+  prometheus_data:
+    name: scoutops_prometheus_data
+  grafana_data:
+    name: scoutops_grafana_data
+
+networks:
+  scoutops-net:
+    external: true
+    name: ${SCOUTOPS_NETWORK:-scoutops-net}
