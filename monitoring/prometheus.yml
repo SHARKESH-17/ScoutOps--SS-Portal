@@ -13,4 +13,4 @@ scrape_configs:
 
   - job_name: prometheus
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["3.111.55.71:9090"]
