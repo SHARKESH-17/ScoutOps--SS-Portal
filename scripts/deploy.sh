@@ -88,6 +88,19 @@ existing_cfg="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.pr
 if [ -n "$existing_cfg" ] && [[ "$existing_cfg" != *docker-compose.prod.yml* ]]; then
   fail "A container named scoutops-app from the LOCAL stack exists. Run 'docker compose down' first."
 fi
+
+# Prepare PostgreSQL initialization files in a Snap-Docker-accessible path.
+INIT_DIR="/home/ubuntu/scoutops-db-init"
+
+mkdir -p "$INIT_DIR" ||
+  fail "Cannot create PostgreSQL initialization directory: $INIT_DIR"
+
+cp db/init.sql "$INIT_DIR/init.sql" ||
+  fail "Cannot copy db/init.sql to $INIT_DIR"
+
+chmod 644 "$INIT_DIR/init.sql" ||
+  fail "Cannot set permissions on PostgreSQL initialization SQL"
+
 compose config -q || fail "docker-compose.prod.yml failed validation"
 log "Environment OK (version $VERSION, port $APP_PORT_V)"
 
