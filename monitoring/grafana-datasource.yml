@@ -5,6 +5,6 @@ datasources:
     uid: scoutops-prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    url: http://3.111.55.71:9090
     isDefault: true
     editable: false
