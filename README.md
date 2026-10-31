@@ -183,6 +183,7 @@ scoutops/
 │   ├── alerts.yml
 │   └── grafana-datasource.yml
 ├── Dockerfile
+├── .gitignore
 ├── docker-compose.yml         # local stack
 ├── docker-compose.prod.yml    # production stack
 ├── Jenkinsfile
